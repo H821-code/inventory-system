@@ -1,122 +1,126 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useEffect, useState } from "react";
+import {
+  createProduct,
+  deleteProduct,
+  getProducts,
+  updateProduct,
+} from "./api/productApi";
+import ConfirmDialog from "./components/ConfirmDialog";
+import ProductForm from "./components/ProductForm";
+import ProductTable from "./components/ProductTable";
+import "./App.css";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [serverErrors, setServerErrors] = useState({});
+  const [productToDelete, setProductToDelete] = useState(null);
+
+  const loadProducts = async () => {
+    try {
+      setProducts(await getProducts());
+      setErrorMessage("");
+    } catch {
+      setErrorMessage(
+        "No se pudo cargar el inventario. Verifica que el backend esté activo.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  const openCreateForm = () => {
+    setEditingProduct(null);
+    setServerErrors({});
+    setErrorMessage("");
+    setIsFormOpen(true);
+  };
+
+  const openEditForm = (product) => {
+    setEditingProduct(product);
+    setServerErrors({});
+    setErrorMessage("");
+    setIsFormOpen(true);
+  };
+
+  const closeForm = () => {
+    setIsFormOpen(false);
+    setEditingProduct(null);
+  };
+
+  const handleSubmit = async (productData) => {
+    try {
+      if (editingProduct) {
+        await updateProduct(editingProduct.id, productData);
+      } else {
+        await createProduct(productData);
+      }
+      closeForm();
+      await loadProducts();
+    } catch (error) {
+      setServerErrors(error.fieldErrors ?? {});
+      setErrorMessage(error.message);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      await deleteProduct(productToDelete.id);
+      setProductToDelete(null);
+      await loadProducts();
+    } catch (error) {
+      setErrorMessage(error.message);
+      setProductToDelete(null);
+    }
+  };
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
+    <main className="container">
+      <header className="header">
+        <h1>Inventario de productos</h1>
+        <button className="btn btn-primary" onClick={openCreateForm}>
+          + Nuevo producto
         </button>
-      </section>
+      </header>
 
-      <div className="ticks"></div>
+      {errorMessage && <div className="alert">{errorMessage}</div>}
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      {isFormOpen && (
+        <ProductForm
+          key={editingProduct?.id ?? "new"}
+          product={editingProduct}
+          onSubmit={handleSubmit}
+          onCancel={closeForm}
+          serverErrors={serverErrors}
+        />
+      )}
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      {loading ? (
+        <p>Cargando...</p>
+      ) : (
+        <ProductTable
+          products={products}
+          onEdit={openEditForm}
+          onDelete={setProductToDelete}
+        />
+      )}
+
+      {productToDelete && (
+        <ConfirmDialog
+          message={`¿Seguro que deseas eliminar "${productToDelete.name}"? Esta acción no se puede deshacer.`}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setProductToDelete(null)}
+        />
+      )}
+    </main>
+  );
 }
 
-export default App
+export default App;
