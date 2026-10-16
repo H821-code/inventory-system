@@ -14,33 +14,35 @@ No hace falta instalar Java, Node ni PostgreSQL: todo se construye dentro de los
 
 ## Cómo ejecutar el proyecto
 
-1. Clonar el repositorio:
+**1. Clonar el repositorio**
 
 ```bash
-   git clone https://github.com/H821-code/inventory-system.git
-   cd inventory-system
+git clone https://github.com/H821-code/inventory-system.git
+cd inventory-system
 ```
 
-2. Construir y levantar los tres servicios con un único comando:
+**2. Construir y levantar los tres servicios con un único comando**
 
 ```bash
-   docker compose up --build
+docker compose up --build
 ```
 
 La primera vez tarda varios minutos (descarga imágenes y compila backend y frontend).
 
-3. Esperar a que en los logs aparezca `Started InventoryApplication` y abrir la aplicación en el navegador.
+**3. Abrir la aplicación**
 
-4. Para detener todo:
+Esperar a que en los logs aparezca `Started InventoryApplication` y abrir http://localhost:3000 en el navegador.
+
+**4. Detener todo**
 
 ```bash
-   docker compose down
+docker compose down
 ```
 
 Los datos se conservan en el volumen `postgres_data`. Para borrarlos también:
 
 ```bash
-   docker compose down -v
+docker compose down -v
 ```
 
 ## URLs y puertos
@@ -48,9 +50,15 @@ Los datos se conservan en el volumen `postgres_data`. Para borrarlos también:
 | Servicio                                         | URL / Puerto                                                                               |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------ |
 | Frontend (React)                                 | http://localhost:3000                                                                      |
+| Frontend, módulo de productos                    | http://localhost:3000/productos                                                            |
 | Backend (API REST)                               | http://localhost:8080                                                                      |
 | Documentación Swagger                            | http://localhost:8080/swagger-ui.html                                                      |
 | PostgreSQL (opcional, para inspeccionar la base) | `localhost:5434` · BD `inventory` · usuario `inventory_user` · contraseña `inventory_pass` |
+
+## Pantallas
+
+- **Inicio** (`/inicio`, ruta por defecto): resumen del inventario con la cantidad de productos, categorías, unidades en stock, valor total y la lista de productos con stock bajo.
+- **Productos** (`/productos`): tabla con los productos, formulario para crear y editar con validaciones visuales, y confirmación antes de eliminar.
 
 ## API REST
 
@@ -89,9 +97,11 @@ inventory-system/
 │       ├── exception/          # Manejo global de errores
 │       └── config/             # Configuración de CORS
 └── frontend/                   # React + Vite
+    ├── nginx.conf              # Soporte de rutas de React Router en Docker
     └── src/
         ├── api/                # Llamadas a la API
-        └── components/         # Tabla, formulario y diálogo de confirmación
+        ├── components/         # Menú lateral, tabla, formulario y diálogo de confirmación
+        └── pages/              # Inicio (resumen) y Productos (CRUD)
 ```
 
 ## Decisiones técnicas
@@ -104,4 +114,5 @@ inventory-system/
 - **Configuración por variables de entorno** (`DB_URL`, `DB_USER`, `DB_PASSWORD`, `CORS_ALLOWED_ORIGINS`) con valores por defecto, para que el mismo código funcione en local y en Docker.
 - **Docker Compose:** `healthcheck` en PostgreSQL y `depends_on` con `service_healthy`, para que el backend espere a que la base esté lista. El volumen `postgres_data` hace persistentes los datos.
 - **Frontend:** React con Vite, `fetch` para consumir la API, validaciones visuales en el formulario y confirmación previa antes de eliminar. Se sirve con nginx en el contenedor.
+- **React Router** para la navegación (`/inicio` por defecto y `/productos`), con un `nginx.conf` que redirige a `index.html` para que recargar la página en cualquier ruta funcione dentro de Docker.
 - **Swagger/OpenAPI** con `springdoc-openapi` para documentar la API.
